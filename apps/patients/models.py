@@ -11,8 +11,8 @@ class Patient(models.Model):
         ('O', 'Other'),
     )
     sex = models.CharField(max_length=1, choices=SEX_CHOICES)
-    date_of_birth = models.DateField()
-    direction = models.TextField()
+    date_of_birth = models.DateField(null=False, blank=False)
+    direction = models.TextField(null=False, blank=False)
 
     def __str__(self):
         return self.name
