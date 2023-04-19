@@ -1,9 +1,8 @@
 from django.db import models
-
+import json
 # Create your models here.
 
 class Patient(models.Model):
-    id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=100)
     SEX_CHOICES = (
         ('M', 'Male'),
@@ -18,12 +17,20 @@ class Patient(models.Model):
         return self.name
     
 class AlergyPatient(models.Model):
-    id = models.AutoField(primary_key=True)
-    id_patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
-    alergy = models.CharField(max_length=100)
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
+    alergies = models.TextField(default="[]")
+
+
+    def get_alergies_list(self):
+        return json.loads(self.alergies)
+    
+
+    def set_alergies_list(self, alergies_list):
+        self.alergies = json.dumps(alergies_list)
+
 
     def __str__(self):
-        return f"{self.id_patient}: {self.alergy}"
+        return f"{self.patient}: {self.alergies}"
     
     
 

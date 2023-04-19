@@ -3,6 +3,7 @@ from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from .models import Patient, AlergyPatient
 from .serializers import PatientSerializer, PatientAlergySerializer
 
@@ -25,37 +26,36 @@ from .serializers import PatientSerializer, PatientAlergySerializer
 #     queryset = AlergyPatient.objects.all()
 #     serializer_class = PatientAlergySerializer
 
-class PatientView(APIView):
 
-    def dispatch(self, request, *args, **kwargs):
-        if request.method in ['GET', 'PUT', 'DELETE'] and 'pk' not in kwargs:
-            return Response({'error': 'El campo pk es requerido para este metodo'}, status=status.HTTP_400_BAD_REQUEST)
-        return super().dispatch(request, *args, **kwargs)
-    
-    
-    def get_queryset(self, pk=None):
-        if pk:
-            return Patient.objects.filter(pk=pk)
-        return Patient.objects.all()
-    
+class PatientList(APIView):
+    queryset = Patient.objects.all()
+    serializer_class = PatientSerializer
+
+    def get_object(self, pk=None):
+        try:
+            if pk is None:
+                return self.queryset.all()
+            return self.queryset.filter(id=pk)
+        except Patient.DoesNotExist:
+            raise Http404
 
     def get(self, request, pk=None):
-        queryset = self.get_queryset(pk)
-        many = True if pk else False
-        serializer = PatientSerializer(queryset, many=many)
-        return Response(serializer.data)
-
-    
+        
+        serializer = PatientSerializer(self.get_object(pk), many=True)
+        
+        return Response(serializer.data)  
+     
 
     def post(self, request):
-        serializer = PatientSerializer(data=request.data)
+        serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+
     def put(self, request, pk):
-        patient = self.get_queryset(pk).first()
+        patient = self.get_object(pk)
         serializer = PatientSerializer(patient, data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -64,69 +64,115 @@ class PatientView(APIView):
     
 
     def delete(self, request, pk):
-        patient = self.get_queryset(pk).first()
+        patient = self.get_object(pk)
         patient.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
     
-
-class AlergyPatientView(APIView):
-
-
-    def dispatch(self, request, *args, **kwargs):
-        if request.method in ['GET', 'PUT', 'DELETE'] and 'pk' not in kwargs:
-            return Response({'error': 'El campo pk es requerido para este metodo'}, status=status.HTTP_400_BAD_REQUEST)
-        return super().dispatch(request, *args, **kwargs)
-    
-
-    def get_queryset(self, pk=None):
-        if pk:
-            return AlergyPatient.objects.filter(pk=pk)
-        return AlergyPatient.objects.all()
-    
-
-    def get(self, request, pk=None):
-        queryset = self.get_queryset(pk)
-        many = True if pk else False
-        serializer = PatientAlergySerializer(queryset, many=many)
-        return Response(serializer.data)
-    
-
-    def post(self, request):
-        patient_id = request.data.get('id_patient')
-        alergies = request.data.get('alergy')
-
-        if not alergies:
-            return Response({'error': 'El campo alergias es requerido'}, status=status.HTTP_400_BAD_REQUEST)
         
-        if not isinstance(alergies, list):
-            return Response({'error': 'El campo alergias debe ser una lista'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+# class PatientDetail(APIView):
+#     def get_object(self, pk):
+#         try:
+#             return Patient.objects.get(pk=pk)
+#         except Patient.DoesNotExist:
+#             raise Http404
+
+    
+#     def get(self, request, pk):
+#         patient = self.get_object(pk)
+#         serializer = PatientSerializer(patient)
+#         return Response(serializer.data)
+    
+
+    
+    
+#     def put(self, request, pk):
+#         patient = self.get_object(pk)
+#         serializer = PatientSerializer(patient, data=request.data)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response(serializer.data)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+#     def delete(self, request, pk):
+#         patient = self.get_object(pk)
+#         patient.delete()
+#         return Response(status=status.HTTP_204_NO_CONTENT)
+    
+
+# class AlergyPatientList(APIView):
+#     # def post(self, request):
+#     #     serializer = PatientAlergySerializer(data=request.data)
+#     #     if serializer.is_valid():
+#     #         serializer.save()
+#     #         return Response(serializer.data, status=status.HTTP_201_CREATED)
+#     #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+#     def get(self, request):
+#         alergies = AlergyPatient.objects.all()
+#         serializer = PatientAlergySerializer(alergies, many=True)
+#         return Response(serializer.data)
+
+
+#     def post(self, request):
+#         patient_id = request.data.get('patient_id')
+#         alergies = request.data.get('alergies')
+
+#         if not alergies:
+#             return Response({"error": "Alergies list is empty"}, status=status.HTTP_400_BAD_REQUEST)
+
+#         try:
+#             patient = Patient.objects.get(id=patient_id)
+#         except ObjectDoesNotExist:
+#             return Response({"error": "Patient does not exist"}, status=status.HTTP_404_NOT_FOUND)
+
+#         new_alergies = []
+#         for alergy in alergies:
+#             try:
+#                 new_alergy = AlergyPatient(patient=patient, alergy=alergy)
+#                 new_alergy.save()
+#                 new_alergies.append(new_alergy)
+#             except ValidationError as e:
+#                 return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+#         if new_alergies:
+#             serializer = PatientAlergySerializer(new_alergies, many=True)
+#             return Response(serializer.data, status=status.HTTP_201_CREATED)
+#         else:
+#             return Response({"error": "All alergies are already associated with the patient"}, status=status.HTTP_400_BAD_REQUEST)
+    
+
+# class AlergyPatientDetail(APIView):
+    
+#     def get_object(self, pk):
+#         try:
+#             return AlergyPatient.objects.get(pk=pk)
+#         except AlergyPatient.DoesNotExist:
+#             raise Http404
         
-        if len(alergies) != len(set(alergies)):
-            return Response({'error': 'El campo alergias no debe tener elementos repetidos'}, status=status.HTTP_400_BAD_REQUEST)
-
-        for alergy in alergies:
-            serializer = PatientAlergySerializer(data={'id_patient': patient_id, 'alergy': alergy})
-            if serializer.is_valid():
-                serializer.save()
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-            
-        return Response({'message': 'Alergias agregadas correctamente'}, status=status.HTTP_201_CREATED)
-
-    def put(self, request, pk):
-        alergy_patient = self.get_queryset(pk).first()
-        serializer = PatientAlergySerializer(alergy_patient, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#     def get(self, request, pk):
+#         alergy = self.get_object(pk)
+#         serializer = PatientAlergySerializer(alergy)
+#         return Response(serializer.data)
+             
+    
+#     def put(self, request, pk):
+#         alergy = self.get_object(pk)
+#         serializer = PatientAlergySerializer(alergy, data=request.data)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response(serializer.data)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 
-    def delete(self, request, pk):
-        alergy_patient = self.get_queryset(pk).first()
-        alergy_patient.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-    
+#     def delete(self, request, pk):
+#         alergy = self.get_object(pk)
+#         alergy.delete()
+#         return Response(status=status.HTTP_204_NO_CONTENT)
 
     
 
