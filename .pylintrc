@@ -1,1 +1,3 @@
 generated-members=objects
+load-plugins=pylint_django
+disable=missing-module-docstring

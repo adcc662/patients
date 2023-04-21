@@ -16,8 +16,6 @@ class PatientSerializer(serializers.ModelSerializer):
         fields = ('name', 'sex', 'date_of_birth', 'direction', 'alergies_all')
 
     
-
-    
     def to_representation(self, instance):
         # representation = {}
         # representation['name'] = instance.name
@@ -32,7 +30,7 @@ class PatientSerializer(serializers.ModelSerializer):
     
 
     def create(self, validated_data):
-        alergies_all = validated_data.pop('alergies_all')
+        alergies_all = validated_data.pop('alergies_all', [])
         patient = Patient.objects.create(**validated_data)
         for alergy in alergies_all:
             AlergyPatient.objects.create(patient=patient, **alergy)
@@ -44,7 +42,7 @@ class PatientSerializer(serializers.ModelSerializer):
             alergies_re = [alergy['alergies'] for alergy in alergies_list]
             duplicates = [item for item, count in Counter(alergies_re).items() if count > 1]
             if duplicates:
-                raise serializers.ValidationError(f"Duplicated Alergies: {', '.join(duplicates)}")
+                raise serializers.ValidationError({"Alergia": f"Duplicated Alergies: {', '.join(duplicates)}"})
             return data
     
 
@@ -53,14 +51,19 @@ class PatientSerializer(serializers.ModelSerializer):
         instance.sex = validated_data.get('sex', instance.sex)
         instance.date_of_birth = validated_data.get('date_of_birth', instance.date_of_birth)
         instance.direction = validated_data.get('direction', instance.direction)
-
-        alergies_all = validated_data.pop('alergies_all')
-        for alergy in alergies_all:
-            alergy_patient = AlergyPatient.objects.get(patient=instance, alergies=alergy['alergies'])
-            alergy_patient.alergies = alergy.get('alergies', alergy_patient.alergies)
-            alergy_patient.save()
-
         instance.save()
+        print(validated_data)
+        # alergies_all = validated_data.pop('alergies_all')
+
+        if 'alergies_all' in validated_data:
+            alergies_all = validated_data.pop('alergies_all')
+
+            for alergy in alergies_all:
+                alergy_patient = AlergyPatient.objects.filter(patient=instance, alergies=alergy.get('alergies')).first()
+                if not alergy_patient:
+                    AlergyPatient.objects.create(patient=instance, alergies=alergy.get('alergies'))
+
+        
         return instance
 
     
