@@ -148,6 +148,7 @@ class PatientTests(APITestCase):
         response = self.client.delete(reverse('patient-detail', kwargs={'pk':created_patient.pk}))
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertEqual(Patient.objects.count(), 0)
+        
 
     
 
