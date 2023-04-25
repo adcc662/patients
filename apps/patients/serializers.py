@@ -13,7 +13,7 @@ class PatientSerializer(serializers.ModelSerializer):
     alergies_all = PatientAlergySerializer(many=True, required=False)
     class Meta:
         model = Patient
-        fields = ('name', 'sex', 'date_of_birth', 'direction', 'alergies_all')
+        fields = ('pk', 'name', 'sex', 'date_of_birth', 'direction', 'alergies_all')
 
     
     def to_representation(self, instance):
@@ -55,16 +55,29 @@ class PatientSerializer(serializers.ModelSerializer):
         print(validated_data)
         # alergies_all = validated_data.pop('alergies_all')
 
+        # if 'alergies_all' in validated_data:
+        #     alergies_all = validated_data.pop('alergies_all')
+
+        #     for alergy in alergies_all:
+        #         alergy_patient = AlergyPatient.objects.filter(patient=instance, alergies=alergy.get('alergies')).first()
+        #         if not alergy_patient:
+        #             AlergyPatient.objects.create(patient=instance, alergies=alergy.get('alergies'))
+
+        
+        # return instance
+
         if 'alergies_all' in validated_data:
             alergies_all = validated_data.pop('alergies_all')
 
-            for alergy in alergies_all:
-                alergy_patient = AlergyPatient.objects.filter(patient=instance, alergies=alergy.get('alergies')).first()
-                if not alergy_patient:
-                    AlergyPatient.objects.create(patient=instance, alergies=alergy.get('alergies'))
+            AlergyPatient.objects.filter(patient=instance).delete()
 
-        
+            for alergy in alergies_all:
+               created_alergy = AlergyPatient.objects.create(patient=instance, alergies=alergy['alergies'])
+               print(validated_data)
+               print("Alergy created: ", created_alergy)
         return instance
+
+
 
     
 

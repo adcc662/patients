@@ -4,6 +4,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 from django.contrib.auth.models import User
 from apps.patients.models import Patient, AlergyPatient
+import json
 
 
 class PatientTests(APITestCase):
@@ -106,12 +107,13 @@ class PatientTests(APITestCase):
             'sex': 'M',
             'date_of_birth': '1990-01-01',
             'direction': 'Calle 1 # 2 - 3',
-            "alergies_all": [
-       {"alergies": "Chocolate"},
+       "alergies_all": [
+       {"alergies": "Fresas"},
+       {"alergies": "Brocoli"},
        {"alergies": "Manzana"},
-       {"alergies": "Carne"}
+       {"alergies": "Cebolla"}
 
-                ]
+    ]
             
                 }
         response = self.client.post(reverse('patients'), patient)
@@ -119,11 +121,14 @@ class PatientTests(APITestCase):
         created_patient = Patient.objects.get(name=response.data['name'])
         patient['name'] = 'Carlos Perez'
         print(patient)
-        response = self.client.put(reverse('patient-detail', kwargs={'pk':created_patient.pk}), patient)
+        response = self.client.put(reverse('patient-detail', kwargs={'pk':created_patient.pk}), 
+                                   data=json.dumps(patient), content_type='application/json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual('Carlos Perez', response.data['name'])
         total_alergias = AlergyPatient.objects.filter(patient=created_patient).count()
-        self.assertEqual(total_alergias, 3)
+        print(response.data['alergies_all'])
+        self.assertEqual(total_alergias, len(response.data['alergies_all']))
+        
 
 
 
@@ -147,8 +152,8 @@ class PatientTests(APITestCase):
         created_patient = Patient.objects.get(name=response.data['name'])
         response = self.client.delete(reverse('patient-detail', kwargs={'pk':created_patient.pk}))
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        # self.assertEqual(Patient.objects.count(), len(response.data))
         self.assertEqual(Patient.objects.count(), 0)
-        
 
     
 

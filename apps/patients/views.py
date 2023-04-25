@@ -61,6 +61,7 @@ class PatientList(APIView):
         else:
             print(patient.first())
             serializer = PatientSerializer(patient.first(), data=request.data)
+            print(request.data)
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data)
